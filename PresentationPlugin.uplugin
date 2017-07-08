@@ -1,0 +1,27 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "0.1",
+  "FriendlyName": "Unreal Presentations",
+  "Description": "Create Presentations from within your Project!",
+  "Category": "Misc",
+  "CreatedBy": "ByteParrot",
+  "CreatedByURL": "byteparrot.com",
+  "DocsURL": "",
+  "MarketplaceURL": "",
+  "SupportURL": "",
+  "EnabledByDefault": false,
+  "CanContainContent": true,
+  "IsBetaVersion": false,
+  "Installed": true,
+  "Modules": [
+    {
+      "Name": "PresentationEditorModule",
+      "Type": "Editor"
+    },
+    {
+      "Name": "PresentationRuntimeModule",
+      "Type": "Runtime"
+    }
+  ]
+}
