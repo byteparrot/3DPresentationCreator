@@ -3,7 +3,7 @@
 3D presentations is a plugin for the Unreal Engine 4 and can be used to turn a level into a presentation. The only necessary setup is to put the plugin in the Plugin folder, activate it inside the project and click on one of the new buttons to configure the level for presenting. After the initial setup, it is possible to place slides into the level and start the presentation by just pressing play*.
 
 ## How-to use the 3D Presentation Creator
-## Initial Setup
+### Initial Setup
 Put the presentation plugin folder into the Plugin folder of the project which should be configured for presenting:
 
 ### Start Project
