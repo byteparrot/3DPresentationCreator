@@ -1,5 +1,5 @@
 #pragma once
-#include "PresentationEditorModulePCH.h"
+
 #include "Slide.h"
 #include "PluginManager.h"
 #include "UnrealEd.h"

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "PresentationEditorModulePCH.h"
 #include "Slide.h"
 #include "PresentationGameMode.h"
 #include "Programs/UnrealHeaderTool/Private/ParserClass.h"

@@ -1,163 +1,97 @@
-#include "PresentationEditorModulePCH.h"
+// Copyright 1998-2017 Epic Games, Inc. All Rights Reserved.
 
-#if WITH_EDITOR
-
-#include "Modules/ModuleManager.h"
 #include "PresentationEditorModule.h"
+#include "PresentationEditorModuleStyle.h"
+#include "PresentationEditorModuleCommands.h"
 #include "LevelEditor.h"
-#include "SDockTab.h"
-#include "EditorStyle.h"
-
+#include "Widgets/Docking/SDockTab.h"
+#include "Widgets/Layout/SBox.h"
+#include "Widgets/Text/STextBlock.h"
+#include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "PresentationToolsWidget.h"
 
-#include "Engine.h"
-#include "PresentationEditorCommands.h"
+static const FName PresentationsPluginTabName("PresentationsPlugin");
 
+#define LOCTEXT_NAMESPACE "FPresentationEditorModuleModule"
 
-DEFINE_LOG_CATEGORY(PresentationPluginLog)
-
-void PresentationEditorModule::StartupModule()
+void FPresentationEditorModuleModule::StartupModule()
 {
-	// This code will execute after your module is loaded into memory (but after global variables are initialized, of course.)
+	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
+	
+	FPresentationEditorModuleStyle::Initialize();
+	FPresentationEditorModuleStyle::ReloadTextures();
 
-	UE_LOG(PresentationPluginLog, Log, TEXT("Starting Extension logic"));
+	FPresentationEditorModuleCommands::Register();
+	
+	PluginCommands = MakeShareable(new FUICommandList);
 
-	if (IsAvailable()) {
-		UE_LOG(PresentationPluginLog, Log, TEXT("Extension is loaded"));
-
-		PresentationEditorCommands::Register();	// register the plugin commands in the engine
-		BindCommands();	// bind the commands to the buttons
-
-		toolbarExtender = MakeShareable(new FExtender); // create toolbar extender
-		toolbarExtender->AddToolBarExtension("Settings", EExtensionHook::After, pluginCommands, FToolBarExtensionDelegate::CreateRaw(this, &PresentationEditorModule::AddToolbarExtension)); // Add extender to the "Settings" hook
-
-		FLevelEditorModule& LevelEditorModule = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor"); // get reference to the unreal editor
+	PluginCommands->MapAction(
+		FPresentationEditorModuleCommands::Get().OpenPluginWindow,
+		FExecuteAction::CreateRaw(this, &FPresentationEditorModuleModule::PluginButtonClicked),
+		FCanExecuteAction());
 		
-		extensibilityManager = LevelEditorModule.GetToolBarExtensibilityManager();	// get the extensibility manager from the editor
-		extensibilityManager->AddExtender(toolbarExtender);	// Add the toolbar extender to the manager so it can be created when the other buttons are created
+	FLevelEditorModule& LevelEditorModule = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
+	
+	{
+		TSharedPtr<FExtender> MenuExtender = MakeShareable(new FExtender());
+		MenuExtender->AddMenuExtension("WindowLayout", EExtensionHook::After, PluginCommands, FMenuExtensionDelegate::CreateRaw(this, &FPresentationEditorModuleModule::AddMenuExtension));
+
+		LevelEditorModule.GetMenuExtensibilityManager()->AddExtender(MenuExtender);
+	}
+	
+	{
+		TSharedPtr<FExtender> ToolbarExtender = MakeShareable(new FExtender);
+		ToolbarExtender->AddToolBarExtension("Settings", EExtensionHook::After, PluginCommands, FToolBarExtensionDelegate::CreateRaw(this, &FPresentationEditorModuleModule::AddToolbarExtension));
 		
-		TSharedRef<class FGlobalTabmanager> tabmanager = FGlobalTabmanager::Get();	// get a reference to the global tab manager
-		tabmanager->RegisterNomadTabSpawner(PresentationTabName, FOnSpawnTab::CreateRaw(this, &PresentationEditorModule::presentationTab))	// create and register the presentation tab in the tab manager
-		  .SetDisplayName(FText::FromString(TEXT("PresentationTab")));
+		LevelEditorModule.GetToolBarExtensibilityManager()->AddExtender(ToolbarExtender);
 	}
-	else {
-		UE_LOG(PresentationPluginLog, Log, TEXT("Extension Load Error"));
-	}
+	
+	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(PresentationsPluginTabName, FOnSpawnTab::CreateRaw(this, &FPresentationEditorModuleModule::OnSpawnPluginTab))
+		.SetDisplayName(LOCTEXT("FPresentationsPluginTabTitle", "PresentationsPlugin"))
+		.SetMenuType(ETabSpawnerMenuType::Hidden);
 }
 
-
-void PresentationEditorModule::ShutdownModule()
+void FPresentationEditorModuleModule::ShutdownModule()
 {
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
-	if (extensibilityManager.IsValid())
-	{
-		PresentationEditorCommands::Unregister();
+	FPresentationEditorModuleStyle::Shutdown();
 
-		TSharedRef<class FGlobalTabmanager> tm = FGlobalTabmanager::Get();
-		tm->UnregisterNomadTabSpawner(PresentationTabName);
+	FPresentationEditorModuleCommands::Unregister();
 
-		extensibilityManager->RemoveExtender(toolbarExtender);
-		extensibilityManager.Reset();
-	}
-	else
-	{
-		extensibilityManager.Reset();
-	}
+	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(PresentationsPluginTabName);
 }
 
-void PresentationEditorModule::AddToolbarExtension(FToolBarBuilder& builder) const
+TSharedRef<SDockTab> FPresentationEditorModuleModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
-#define LOCTEXT_NAMESPACE "PresentationEditorToolBar"
+	FText WidgetText = FText::Format(
+		LOCTEXT("WindowWidgetText", "Add code to {0} in {1} to override this window's contents"),
+		FText::FromString(TEXT("FPresentationEditorModuleModule::OnSpawnPluginTab")),
+		FText::FromString(TEXT("PresentationEditorModule.cpp"))
+		);
 
-	// Add Toolbar button to quickly let the user create slides
-	builder.AddToolBarButton(
-		PresentationEditorCommands::Get().NewSlide, 
-		NAME_None, 
-		LOCTEXT("MyButton_Override", "New Slide"), 
-		LOCTEXT("MyButton_ToolTipOverride", "Click to add a new slide to the camera position"), 
-		FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.ViewOptions", "LevelEditor.ViewOptions.Small"),
-		NAME_None
-	);
+	return SNew(SDockTab)
+		.TabRole(ETabRole::NomadTab)
+		[
+			SNew(PresentationToolsWidget)
+		];
+}
 
-	// Add Toolbar Combo Button for more presentation options
-	builder.AddComboButton(
-		FUIAction(),
-		FOnGetContent::CreateStatic(&PresentationEditorModule::GeneratePresentationSettingsDropDownMenu, pluginCommands.ToSharedRef()),	// use pointer to the dropdownmenu creating function to be called on click
-		LOCTEXT("QuickSettingsCombo", "PresentationTools"),
-		LOCTEXT("QuickSettingsCombo_ToolTip", "Presentation Tools"),
-		FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.GameSettings"),
-		false,
-		NAME_None
-	);
+void FPresentationEditorModuleModule::PluginButtonClicked()
+{
+	FGlobalTabmanager::Get()->InvokeTab(PresentationsPluginTabName);
+}
+
+void FPresentationEditorModuleModule::AddMenuExtension(FMenuBuilder& Builder)
+{
+	Builder.AddMenuEntry(FPresentationEditorModuleCommands::Get().OpenPluginWindow);
+}
+
+void FPresentationEditorModuleModule::AddToolbarExtension(FToolBarBuilder& Builder)
+{
+	Builder.AddToolBarButton(FPresentationEditorModuleCommands::Get().OpenPluginWindow);
+}
 
 #undef LOCTEXT_NAMESPACE
-}
-
-TSharedRef<SDockTab> PresentationEditorModule::presentationTab(const FSpawnTabArgs& TabSpawnArgs) const
-{
-	TSharedRef<SDockTab> SpawnedTab = SNew(SDockTab).TabRole(ETabRole::NomadTab)[
-		SNew(PresentationToolsWidget)
-	];
-	return SpawnedTab;
-}
-
-TSharedRef<SWidget> PresentationEditorModule::GeneratePresentationSettingsDropDownMenu(TSharedRef<FUICommandList> InCommandList)
-{
-#define LOCTEXT_NAMESPACE "PresentationEditorToolBarViewMenu"
-
-	// Get all menu extenders for this context menu from the level editor module
-	FLevelEditorModule& LevelEditorModule = FModuleManager::GetModuleChecked<FLevelEditorModule>(TEXT("LevelEditor"));
-	TArray<FLevelEditorModule::FLevelEditorMenuExtender> MenuExtenderDelegates = LevelEditorModule.GetAllLevelEditorToolbarViewMenuExtenders();
-	TArray<TSharedPtr<FExtender>> Extenders;
-
-	for (int32 i = 0; i < MenuExtenderDelegates.Num(); ++i)
-	{
-		if (MenuExtenderDelegates[i].IsBound())
-		{
-			Extenders.Add(MenuExtenderDelegates[i].Execute(InCommandList));
-		}
-	}
-	TSharedPtr<FExtender> MenuExtender = FExtender::Combine(Extenders);
-
-	const bool bShouldCloseWindowAfterMenuSelection = true;
-	FMenuBuilder MenuBuilder(bShouldCloseWindowAfterMenuSelection, InCommandList, MenuExtender);
-
-	MenuBuilder.BeginSection("ProjectSettingsSection", LOCTEXT("ProjectSettings", "Game Specific Settings"));
-	{
-		MenuBuilder.AddMenuEntry(PresentationEditorCommands::Get().NewSlide);
-		MenuBuilder.AddMenuEntry(PresentationEditorCommands::Get().NewCustomDesign);
-		MenuBuilder.AddMenuEntry(PresentationEditorCommands::Get().ConfigureButton);
-		MenuBuilder.AddMenuEntry(PresentationEditorCommands::Get().ToolsButton);
-	}
-	MenuBuilder.EndSection();
-
-#undef LOCTEXT_NAMESPACE
-
-	return MenuBuilder.MakeWidget();
-}
-
-void PresentationEditorModule::BindCommands()
-{
-	pluginCommands = MakeShareable(new FUICommandList);
-
-	pluginCommands->MapAction(
-		PresentationEditorCommands::Get().ToolsButton,
-		FExecuteAction::CreateStatic(&PresentationEditorCommands::OpenPresentationTools_Clicked));
-
-	pluginCommands->MapAction(
-		PresentationEditorCommands::Get().NewSlide,
-		FExecuteAction::CreateStatic(&PresentationEditorCommands::NewSlide_Clicked));
-
-	pluginCommands->MapAction(
-		PresentationEditorCommands::Get().ConfigureButton,
-		FExecuteAction::CreateStatic(&PresentationEditorCommands::ConfigurePresentation_Clicked));
-
-	pluginCommands->MapAction(
-		PresentationEditorCommands::Get().NewCustomDesign,
-		FExecuteAction::CreateStatic(&PresentationEditorCommands::NewCustomDesign_Clicked));
-}
-
-IMPLEMENT_MODULE(PresentationEditorModule, PresentationEditorModule)
-
-#endif
+	
+IMPLEMENT_MODULE(FPresentationEditorModuleModule, PresentationPlugin)

@@ -1,7 +1,3 @@
-#include "PresentationEditorModulePCH.h"
-
-#if WITH_EDITOR
-
 #include "PluginManager.h"
 #include "UnrealEd.h"
 #include "Editor/UnrealEd/Public/EditorViewportClient.h"
@@ -31,7 +27,7 @@ void PluginManager::spawnSlide(UWorld* const World) const
 
 	if(newSlide == nullptr)
 	{
-		UE_LOG(PresentationPluginLog, Log, TEXT("Slide Blueprint not found - Please save & restart the editor with the plugin!"));
+		UE_LOG(LogTemp, Log, TEXT("Slide Blueprint not found - Please save & restart the editor with the plugin!"));
 	}
 
 	newSlide->SetFolderPath("Slides");
@@ -61,5 +57,3 @@ void PluginManager::printMessageBox(const FText& InText)
 		NotificationItem->ExpireAndFadeout();
 }
 
-
-#endif

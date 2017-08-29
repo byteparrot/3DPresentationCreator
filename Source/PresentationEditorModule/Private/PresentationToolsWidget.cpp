@@ -1,12 +1,12 @@
-#include "PresentationEditorModulePCH.h"
-#include "PresentationEditorCommands.h"
 #include "PresentationToolsWidget.h"
+#include "PresentationEditorModuleCommands.h"
+
 
 #define LOCTEXT_NAMESPACE "PresentationToolsWidget"
 
 void PresentationToolsWidget::Construct(const FArguments& InArgs)
 {
-	UE_LOG(PresentationPluginLog, Log, TEXT("PresentationToolsWidget::Construct..."));
+	UE_LOG(LogTemp, Log, TEXT("PresentationToolsWidget::Construct..."));
 
 	index = 0;
 
@@ -26,15 +26,15 @@ void PresentationToolsWidget::Construct(const FArguments& InArgs)
 					SNew(SWrapBox).UseAllottedWidth(true)
 					+ SWrapBox::Slot().Padding(10.0f)
 					[
-						SNew(SButton).OnClicked_Lambda([]()->FReply { PresentationEditorCommands::NewSlide_Clicked(); return FReply::Handled(); }).Text(FText::FromString(TEXT("Add Slide"))).ContentPadding(3)
+						SNew(SButton).OnClicked_Lambda([]()->FReply { FPresentationEditorModuleCommands::NewSlide_Clicked(); return FReply::Handled(); }).Text(FText::FromString(TEXT("Add Slide"))).ContentPadding(3)
 					]
 					+ SWrapBox::Slot().Padding(10.0f)
 					[
-						SNew(SButton).OnClicked_Lambda([]()->FReply { PresentationEditorCommands::ConfigurePresentation_Clicked(); return FReply::Handled(); }).Text(FText::FromString(TEXT("Configure Presentationmode"))).ContentPadding(3)
+						SNew(SButton).OnClicked_Lambda([]()->FReply { FPresentationEditorModuleCommands::ConfigurePresentation_Clicked(); return FReply::Handled(); }).Text(FText::FromString(TEXT("Configure Presentationmode"))).ContentPadding(3)
 					]
 					+ SWrapBox::Slot().Padding(10.0f)
 					[
-						SNew(SButton).OnClicked_Lambda([]()->FReply { PresentationEditorCommands::NewCustomDesign_Clicked(); return FReply::Handled(); }).Text(FText::FromString(TEXT("New Custom Design"))).ContentPadding(3)
+						SNew(SButton).OnClicked_Lambda([]()->FReply { FPresentationEditorModuleCommands::NewCustomDesign_Clicked(); return FReply::Handled(); }).Text(FText::FromString(TEXT("New Custom Design"))).ContentPadding(3)
 					]
 				]
 			]
@@ -163,7 +163,7 @@ void PresentationToolsWidget::MoveToSlide(int _index)
 		GEditor->SelectActor(TargetSlide, true, true, true);
 	}
 	else
-		UE_LOG(PresentationPluginLog, Log, TEXT("Slide not found"));
+		UE_LOG(LogTemp, Log, TEXT("Slide not found"));
 }
 
 FReply PresentationToolsWidget::NextSlideButtonClicked()
